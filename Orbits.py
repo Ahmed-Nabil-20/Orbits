@@ -1,0 +1,205 @@
+from OpenGL.GL import *
+from OpenGL.GLUT import *
+from OpenGL.GLU import *
+from math import sin, cos, radians
+import sys
+import random
+import time
+
+# Window size
+width, height = 1000, 800
+
+# Orbit constants for controlling planet distance logic
+MIN_ORBIT_RADIUS = 95
+MAX_ORBIT_RADIUS = 350
+RED_THRESHOLD = 120
+BLUE_THRESHOLD = 280
+
+# Time tracking for frame-independent animation
+last_time = time.time()
+
+# Star positions for background
+NUM_STARS = 100
+stars = [(random.randint(0, width), random.randint(0, height)) for _ in range(NUM_STARS)]
+
+# Animation pause control
+is_paused = False
+
+# Main simulation class for the Earth-Moon system
+class PlanetSystem:
+    def __init__(self):
+        self.angle = 0.0  # Earth's orbit angle around the Sun
+        self.moon_angle = 0.0  # Moon's orbit angle around Earth
+        self.orbit_radius = 200  # Distance from Sun
+        self.planet_speed = 0.5  # Speed of Earth's orbit (degrees/frame)
+        self.moon_speed = 2.0  # Speed of Moon's orbit (degrees/frame)
+        self.moon_orbit_radius = 40  # Moon's orbit radius around Earth
+
+    def update(self, delta_time):
+        # Update angles based on delta time for smooth animation
+        self.angle = (self.angle + self.planet_speed * delta_time * 60) % 360
+        self.moon_angle = (self.moon_angle + self.moon_speed * delta_time * 60) % 360
+
+    def draw(self):
+        # Draw central sun and orbit guides
+        draw_sun(width // 2, height // 2, 40)
+        draw_circle(width // 2, height // 2, RED_THRESHOLD, (1.0, 0.0, 0.0), filled=False)
+        draw_circle(width // 2, height // 2, BLUE_THRESHOLD, (0.0, 0.0, 1.0), filled=False)
+
+        # Compute Earth's position based on current angle
+        earth_x = width // 2 + self.orbit_radius * cos(radians(self.angle))
+        earth_y = height // 2 + self.orbit_radius * sin(radians(self.angle))
+
+        # Determine Earth's ocean color based on distance from Sun
+        if self.orbit_radius < RED_THRESHOLD:
+            t = min((RED_THRESHOLD - self.orbit_radius) / (RED_THRESHOLD - MIN_ORBIT_RADIUS), 1.0)
+            ocean_color = interpolate_color((1.0, 0.2, 0.2), (0.4, 0.0, 0.0), t)  # Red tones
+        elif self.orbit_radius > BLUE_THRESHOLD:
+            t = min((self.orbit_radius - BLUE_THRESHOLD) / (MAX_ORBIT_RADIUS - BLUE_THRESHOLD), 1.0)
+            ocean_color = interpolate_color((0.0, 0.4, 1.0), (1.0, 1.0, 1.0), t)  # Blue to white
+        else:
+            ocean_color = (0.0, 0.4, 1.0)  # Normal Earth blue
+
+        draw_circle(earth_x, earth_y, 20, ocean_color, filled=True)
+
+        # Compute Moon's position relative to Earth
+        moon_x = earth_x + self.moon_orbit_radius * cos(radians(self.moon_angle))
+        moon_y = earth_y + self.moon_orbit_radius * sin(radians(self.moon_angle))
+
+        # Moon color changes based on Earth's orbit zone
+        if self.orbit_radius < RED_THRESHOLD:
+            t = min((RED_THRESHOLD - self.orbit_radius) / (RED_THRESHOLD - MIN_ORBIT_RADIUS), 1.0)
+            moon_color = interpolate_color((0.5, 0.5, 0.5), (1.0, 0.0, 0.0), t)
+        elif self.orbit_radius > BLUE_THRESHOLD:
+            t = min((self.orbit_radius - BLUE_THRESHOLD) / (MAX_ORBIT_RADIUS - BLUE_THRESHOLD), 1.0)
+            moon_color = interpolate_color((0.5, 0.5, 0.5), (0.9, 0.9, 0.9), t)
+        else:
+            moon_color = (0.5, 0.5, 0.5)
+
+        draw_circle(moon_x, moon_y, 8, moon_color)
+
+        # Add land if Earth is within habitable zone
+        if RED_THRESHOLD < self.orbit_radius < BLUE_THRESHOLD:
+            land_offsets = [(-5, 5), (6, 4), (-3, -6)]
+            for dx, dy in land_offsets:
+                draw_circle(earth_x + dx, earth_y + dy, 5, (0.0, 0.8, 0.0), filled=True)
+
+        # Draw status text
+        draw_text(10, height - 20, f"Orbit Radius: {self.orbit_radius:.0f}")
+        draw_text(10, height - 40, f"Earth Angle: {self.angle:.1f}")
+        draw_text(10, height - 60, f"Moon Angle: {self.moon_angle:.1f}")
+        draw_text(10, height - 80, "[A]/[D] to move Earth | [P]ause")
+
+# Draws text at a specific location
+def draw_text(x, y, text):
+    glColor3f(1, 1, 1)
+    glRasterPos2f(x, y)
+    for ch in text:
+        glutBitmapCharacter(GLUT_BITMAP_HELVETICA_18, ord(ch))
+
+# Render stars in background
+def draw_stars():
+    glColor3f(1.0, 1.0, 1.0)
+    glPointSize(2.0)
+    glBegin(GL_POINTS)
+    for x, y in stars:
+        glVertex2f(x, y)
+    glEnd()
+
+# Draws a filled or outlined circle
+def draw_circle(x, y, radius, color, filled=True):
+    glColor3f(*color)
+    mode = GL_TRIANGLE_FAN if filled else GL_LINE_LOOP
+    glBegin(mode)
+    if filled:
+        glVertex2f(x, y)  # Center point for filled circle
+    for deg in range(0, 361, 5):
+        rad = radians(deg)
+        glVertex2f(x + cos(rad) * radius, y + sin(rad) * radius)
+    glEnd()
+
+# Linear color interpolation helper
+def interpolate_color(c1, c2, t):
+    return tuple(c1[i] + (c2[i] - c1[i]) * t for i in range(3))
+
+# Draws the central sun with a gradient effect
+def draw_sun(x, y, radius):
+    glBegin(GL_TRIANGLE_FAN)
+    glColor3f(1.0, 1.0, 0.0)  # Yellow center
+    glVertex2f(x, y)
+    for deg in range(0, 361, 5):
+        rad = radians(deg)
+        glColor3f(1.0, 0.5, 0.0)  # Orange edge
+        glVertex2f(x + cos(rad) * radius, y + sin(rad) * radius)
+    glEnd()
+
+    glColor4f(1.0, 0.8, 0.0, 0.3)  # Transparent glow
+    glBegin(GL_TRIANGLE_FAN)
+    glVertex2f(x, y)
+    for deg in range(0, 361, 5):
+        rad = radians(deg)
+        glVertex2f(x + cos(rad) * (radius + 15), y + sin(rad) * (radius + 15))
+    glEnd()
+
+# Instantiate the system
+system = PlanetSystem()
+
+# Main scene render function
+def draw_scene():
+    glClear(GL_COLOR_BUFFER_BIT)
+    draw_stars()
+    system.draw()
+    glutSwapBuffers()
+
+# Timer update callback for continuous animation
+def update(value):
+    global last_time
+    if not is_paused:
+        current_time = time.time()
+        delta_time = current_time - last_time
+        last_time = current_time
+        system.update(delta_time)
+    glutPostRedisplay()
+    glutTimerFunc(16, update, 0)  # Roughly 60 FPS
+
+# Keyboard input for orbit control and pausing
+def keyboard(key, x, y):
+    global is_paused
+    if key == b'a':
+        system.orbit_radius = max(MIN_ORBIT_RADIUS, system.orbit_radius - 10)
+    elif key == b'd':
+        system.orbit_radius = min(MAX_ORBIT_RADIUS, system.orbit_radius + 10)
+    elif key == b'p':
+        is_paused = not is_paused
+
+# Adjust viewport on window resize
+def reshape(w, h):
+    global width, height
+    width, height = w, h
+    glViewport(0, 0, w, h)
+    glMatrixMode(GL_PROJECTION)
+    glLoadIdentity()
+    gluOrtho2D(0, w, 0, h)
+    glMatrixMode(GL_MODELVIEW)
+    glLoadIdentity()
+
+# Initialize and run the OpenGL program
+def main():
+    glutInit(sys.argv)
+    glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGB)
+    glutInitWindowSize(width, height)
+    screen_width = glutGet(GLUT_SCREEN_WIDTH)
+    screen_height = glutGet(GLUT_SCREEN_HEIGHT)
+    glutInitWindowPosition((screen_width - width) // 2, (screen_height - height) // 2)
+    glutCreateWindow(b"Earth and Moon Simulation")
+
+    glClearColor(0.0, 0.0, 0.05, 1.0)  # Dark space background
+
+    glutDisplayFunc(draw_scene)
+    glutReshapeFunc(reshape)
+    glutKeyboardFunc(keyboard)
+    glutTimerFunc(0, update, 0)
+    glutMainLoop()
+
+if __name__ == "__main__":
+    main()
