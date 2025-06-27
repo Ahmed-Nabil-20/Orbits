@@ -1,7 +1,7 @@
 from OpenGL.GL import *
 from OpenGL.GLUT import *
 from OpenGL.GLU import *
-from math import sin, cos, radians
+from math import sin, cos, radians, sqrt
 import sys
 import random
 import time
@@ -36,17 +36,12 @@ class PlanetSystem:
         self.moon_orbit_radius = 40  # Moon's orbit radius around Earth
 
     def update(self, delta_time):
-        # Set dynamic speed based on orbital zone
-        if self.orbit_radius < RED_THRESHOLD:
-            dynamic_speed = 2.0  # Burning zone (close to Sun)
-        elif self.orbit_radius > BLUE_THRESHOLD:
-            dynamic_speed = 0.5  # Frozen zone (far from Sun)
-        else:
-            dynamic_speed = 1.0  # Normal zone
+        # Simulate real orbital speed based on distance (Kepler's 3rd Law approximation)
+        orbital_speed = sqrt(1 / self.orbit_radius) * 150  # arbitrary scaling
 
-        # Update angles based on dynamic speed
-        self.angle = (self.angle + dynamic_speed * delta_time * 60) % 360
+        self.angle = (self.angle + orbital_speed * delta_time) % 360
         self.moon_angle = (self.moon_angle + self.moon_speed * delta_time * 60) % 360
+        self.planet_speed = orbital_speed
 
     def draw(self):
         draw_sun(width // 2, height // 2, 40)
@@ -88,14 +83,16 @@ class PlanetSystem:
             for dx, dy in land_offsets:
                 draw_circle(earth_x + dx, earth_y + dy, 5, (0.0, 0.8, 0.0), filled=True)
 
-        draw_text(10, height - 20, f"Orbit Radius: {self.orbit_radius:.0f}")
-        draw_text(10, height - 40, f"Earth Angle: {self.angle:.1f}")
-        draw_text(10, height - 60, f"Moon Angle: {self.moon_angle:.1f}")
-        draw_text(10, height - 80, f"Current Speed: {2.0 if self.orbit_radius < RED_THRESHOLD else 0.5 if self.orbit_radius > BLUE_THRESHOLD else 1.0:.2f}")
-        draw_text(10, height - 100, f"Planet State: {'Burning' if self.orbit_radius < RED_THRESHOLD else 'Frozen' if self.orbit_radius > BLUE_THRESHOLD else 'Normal'}")
-        draw_text(10, height - 120, "Sun’s Gravitational")
-        draw_text(10, height - 135, f"Influence on the Earth: {9.8 * (200 / self.orbit_radius):.2f} m/s²")
-        draw_text(10, height - 155, "[A]/[D] to move Earth | [P]ause")
+        draw_text(10, height - 20, f"Distance from Sun: {self.orbit_radius * 1000:.0f} km")
+        draw_text(10, height - 40, f"Orbit Radius: {self.orbit_radius:.0f}")
+        draw_text(10, height - 60, f"Earth Angle: {self.angle:.1f}")
+        draw_text(10, height - 80, f"Moon Angle: {self.moon_angle:.1f}")
+        draw_text(10, height - 100, f"Orbital Speed: {self.planet_speed:.2f} units/s")
+        draw_text(10, height - 120, f"Planet State: {'Burning' if self.orbit_radius < RED_THRESHOLD else 'Frozen' if self.orbit_radius > BLUE_THRESHOLD else 'Normal'}")
+        draw_text(10, height - 140, "Sun’s Gravitational Influence on the Earth:")
+        draw_text(10, height - 160, f"{9.8 * (200 / self.orbit_radius):.2f} m/s²")
+        draw_text(10, height - 180, "[A]/[D] to move Earth | [P]ause")
+
 
 def draw_text(x, y, text):
     glColor3f(1, 1, 1)
