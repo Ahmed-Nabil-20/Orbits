@@ -51,7 +51,9 @@ class PlanetSystem:
         earth_y = height // 2 + self.orbit_radius * sin(radians(self.angle))
 
         # Determine Earth's ocean color based on distance from Sun
-        if self.orbit_radius < RED_THRESHOLD:
+        if self.orbit_radius == 115:
+            ocean_color = (0.0, 0.4, 1.0)  # Force blue color at radius 115
+        elif self.orbit_radius < RED_THRESHOLD:
             t = min((RED_THRESHOLD - self.orbit_radius) / (RED_THRESHOLD - MIN_ORBIT_RADIUS), 1.0)
             ocean_color = interpolate_color((1.0, 0.2, 0.2), (0.4, 0.0, 0.0), t)  # Red tones
         elif self.orbit_radius > BLUE_THRESHOLD:
