@@ -184,7 +184,7 @@ def main():
     screen_width = glutGet(GLUT_SCREEN_WIDTH)
     screen_height = glutGet(GLUT_SCREEN_HEIGHT)
     glutInitWindowPosition((screen_width - width) // 2, (screen_height - height) // 2)
-    glutCreateWindow(b"Earth and Moon Simulation")
+    glutCreateWindow(b"Orbits")
 
     glClearColor(0.0, 0.0, 0.05, 1.0)
 
