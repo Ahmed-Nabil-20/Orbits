@@ -93,7 +93,9 @@ class PlanetSystem:
         draw_text(10, height - 60, f"Moon Angle: {self.moon_angle:.1f}")
         draw_text(10, height - 80, f"Current Speed: {2.0 if self.orbit_radius < RED_THRESHOLD else 0.5 if self.orbit_radius > BLUE_THRESHOLD else 1.0:.2f}")
         draw_text(10, height - 100, f"Planet State: {'Burning' if self.orbit_radius < RED_THRESHOLD else 'Frozen' if self.orbit_radius > BLUE_THRESHOLD else 'Normal'}")
-        draw_text(10, height - 120, "[A]/[D] to move Earth | [P]ause")
+        draw_text(10, height - 120, "Sun’s Gravitational")
+        draw_text(10, height - 135, f"Influence on the Earth: {9.8 * (200 / self.orbit_radius):.2f} m/s²")
+        draw_text(10, height - 155, "[A]/[D] to move Earth | [P]ause")
 
 def draw_text(x, y, text):
     glColor3f(1, 1, 1)
