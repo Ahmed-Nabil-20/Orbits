@@ -1,0 +1,1 @@
+This a Computer Animation Project using OpenGl Libirary, This project is about the planet Earth and the moon as they revolve around the sun with some information as they approach and move away from the sun.
